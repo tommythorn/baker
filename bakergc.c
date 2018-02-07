@@ -3,13 +3,15 @@
  * paper "List Processing in Real Time on a Serial Computer" by Henry
  * G. Baker, Jr.
  *
- * --Tommy 2018-02-06
+ * --Tommy 2018-02-07
  */
 
+#include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 
 #define NR 32                           // # of registers (root pointers)
@@ -29,7 +31,7 @@ ptr S;                                  // Scan; points to first untraced cell.
 ptr T;                                  // Top; points to top of tospace.
 ptr R[NR];
 
-bool incrementalgc = true;
+bool incrementalgc = false;
 unsigned K = 4;                         // Number of objects to scan per cons
 
 
@@ -239,9 +241,52 @@ void workload(void)
     printf("\n");
 }
 
-int main(int c, char **v)
+void usage(char *progname, char *msg1, char *msg2)
 {
-    // XXX Getops for incrementalgc, K, heapsize, and workloads
+    fprintf(stderr,
+            "%s%s\n"
+            "Usage: %s $opts\n"
+            "       -s N  for size of semispace in number of cell pairs\n"
+            "       -i    for incremental GC\n"
+            "       -k N  of cell pairs to scan per cons (implies -i)\n",
+            msg1, msg2, progname);
+    exit(EXIT_FAILURE);
+}
+
+int main(int argc, char **argv)
+{
+    char ch;
+    while ((ch = getopt(argc, argv, "s:k:i")) != -1) {
+        switch (ch) {
+        case 'i':
+            incrementalgc = true;
+            break;
+        case 's': {
+            char *ep;
+            heapsize = strtol(optarg, &ep, 10) * 2;
+            if (*ep)
+                usage(argv[0], "Can't parse size: ", optarg);
+            break;
+        }
+
+        case 'k': {
+            char *ep;
+            K = strtol(optarg, &ep, 10) * 2;
+            if (K < 1 || *ep)
+                usage(argv[0], "Illegal incremental size: ", optarg);
+            incrementalgc = true;
+            break;
+        }
+
+        case '?':
+        default: {
+            char msg[2] = { ch, 0};
+            usage(argv[0], "Unknown option: ", msg);
+            break;
+        }}
+    }
+    argc -= optind;
+    argv += optind;
 
     if (incrementalgc)
         printf("S - Scan pointer\n"
