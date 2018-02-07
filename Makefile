@@ -1,6 +1,6 @@
 CFLAGS=-g -Wall
 
-run: rtgc1
-	./rtgc1
+run: bakergc
+	./bakergc
 
-rtgc1: rtgc1.o
+bakergc: bakergc.o
