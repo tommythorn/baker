@@ -31,7 +31,7 @@ ptr S;                                  // Scan; points to first untraced cell.
 ptr T;                                  // Top; points to top of tospace.
 ptr R[NR];
 
-bool incrementalgc = false;
+bool incrementalgc = true;
 unsigned K = 4;                         // Number of objects to scan per cons
 
 
@@ -128,7 +128,7 @@ ptr cons(ptr x, ptr y)                  // Allocate the list cell (x.y)
 
 ptr car(ptr x)
 {
-    if (incrementalgc)
+    if (!incrementalgc)
         return x[0].p;
     else
         return move(x[0].p);
@@ -136,7 +136,7 @@ ptr car(ptr x)
 
 ptr cdr(ptr x)
 {
-    if (incrementalgc)
+    if (!incrementalgc)
         return x[1].p;
     else
         return move(x[1].p);
@@ -247,7 +247,8 @@ void usage(char *progname, char *msg1, char *msg2)
             "%s%s\n"
             "Usage: %s $opts\n"
             "       -s N  for size of semispace in number of cell pairs\n"
-            "       -i    for incremental GC\n"
+            "       -i 1   for incremental GC (default)\n"
+            "       -i 0   for stop-the-world GC\n"
             "       -k N  of cell pairs to scan per cons (implies -i)\n",
             msg1, msg2, progname);
     exit(EXIT_FAILURE);
@@ -256,27 +257,30 @@ void usage(char *progname, char *msg1, char *msg2)
 int main(int argc, char **argv)
 {
     char ch;
-    while ((ch = getopt(argc, argv, "s:k:i")) != -1) {
+    while ((ch = getopt(argc, argv, "s:k:i:")) != -1) {
         switch (ch) {
-        case 'i':
-            incrementalgc = true;
-            break;
-        case 's': {
+            long v;
             char *ep;
+
+        case 'i':
+            v = strtol(optarg, &ep, 10);
+            if (*ep)
+                usage(argv[0], "Can't parse boolean: ", optarg);
+            incrementalgc = v != 0;
+            break;
+
+        case 's':
             heapsize = strtol(optarg, &ep, 10) * 2;
             if (*ep)
                 usage(argv[0], "Can't parse size: ", optarg);
             break;
-        }
 
-        case 'k': {
-            char *ep;
+        case 'k':
             K = strtol(optarg, &ep, 10) * 2;
             if (K < 1 || *ep)
                 usage(argv[0], "Illegal incremental size: ", optarg);
             incrementalgc = true;
             break;
-        }
 
         case '?':
         default: {
